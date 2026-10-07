@@ -30,6 +30,16 @@ export interface LessonItem {
     filename: string;
   };
   quizzes?: QuizQuestion[];
+  /** Danh sách câu/từ tiếng Anh thuần túy để gắn nút loa phát âm (do AI sinh, không lẫn tiếng Việt) */
+  audioExamples?: AudioExample[];
+}
+
+export interface AudioExample {
+  label: string;
+  /** Chỉ chứa tiếng Anh thuần túy — nội dung máy sẽ đọc */
+  english: string;
+  /** Nghĩa tiếng Việt — chỉ hiển thị, không đọc */
+  vietnamese: string;
 }
 
 export interface ChapterItem {

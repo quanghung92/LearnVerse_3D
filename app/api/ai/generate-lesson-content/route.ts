@@ -19,24 +19,54 @@ export async function POST(req: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    const isEnglishLesson = /english|tiếng anh|ngoại ngữ|german|french|japanese|korean|chinese/i.test(`${courseTitle} ${chapterTitle} ${lessonTitle} ${domainId}`);
+
     const prompt = `Bạn là Chuyên gia Giảng dạy & Biên soạn Giáo trình AI của nền tảng LearnVerse 3D.
-Hãy tạo nội dung bài học THỰC SỰ CHUYÊN SÂU, THỰC CHIẾN và CỰC KỲ DỄ HIỂU cho học viên:
+Hãy tạo nội dung bài học THỰC SỰ CHUYÊN SÂU, CHI TIẾT, THỰC CHIẾN và CỰC KỲ DỄ HIỂU cho học viên:
 - Tên khóa học: "${courseTitle}"
 - Tên chương: "${chapterTitle}"
 - Tên bài học: "${lessonTitle}"
 - Lĩnh vực: ${domainId} (Bao gồm K-12 Phổ thông như Toán, Tiếng Anh, hoặc IT/AI/Design...)
 - Hình thức bài học: ${lessonType}
 
+YÊU CẦU CHẤT LƯỢNG NỘI DUNG (BẮT BUỘC - bài học sơ sài sẽ bị từ chối):
+- Bài giảng PHẢI DÀI và CHI TIẾT (tối thiểu 800-1200 từ cho bài lý thuyết, không được viết qua loa vài đoạn ngắn).
+- Cấu trúc bài giảng bắt buộc gồm đủ các mục, mỗi mục có nội dung thực chất:
+  1. **Khái niệm & Tại sao cần học**: giải thích tường tận, liên hệ đời sống thực tế của học viên.
+  2. **Kiến thức trọng tâm**: chia nhỏ thành từng ý, mỗi ý giải thích kỹ kèm lý do.
+  3. **Ví dụ minh họa sinh động**: TỐI THIỂU 4-6 ví dụ cụ thể, gần gũi, có tình huống thực tế (không ví dụ chung chung 1 dòng).
+  4. **Lưu ý & Bẫy lỗi thường gặp**: liệt kê các nhầm lẫn phổ biến, giải thích TẠI SAO sai và cách sửa đúng.
+  5. **Bài tập vận dụng mini**: 2-3 bài tập có đáp án và lời giải ngắn để học viên tự kiểm tra ngay.
+  6. **Mẹo ghi nhớ**: mẹo, câu thần chú hoặc sơ đồ tư duy giúp nhớ lâu.
+- Dùng Markdown đẹp: tiêu đề ##, ###, **in đậm** từ khóa, danh sách gạch đầu dòng, bảng so sánh khi phù hợp.
+- summaryPoints: TỐI THIỂU 6 điểm cốt lõi, mỗi điểm là một câu hoàn chỉnh, cụ thể (không chung chung).
+- quizzes: TỐI THIỂU 5 câu trắc nghiệm phủ đều các phần của bài, mỗi câu có explanation giải thích TẠI SAO đáp án đúng và tại sao các đáp án khác sai.
+${isEnglishLesson ? `
+ĐẶC BIỆT CHO BÀI HỌC TIẾNG ANH / NGOẠI NGỮ (BẮT BUỘC):
+- Trong contentMarkdown: danh sách từ vựng liệt kê từng dòng rõ ràng (ví dụ: - **One** /wʌn/ - Số một), câu giao tiếp mẫu đặt trong dấu trích dẫn > kèm nghĩa tiếng Việt (ví dụ: > "How old are you?" — "Bạn bao nhiêu tuổi?").
+- BẮT BUỘC trả thêm trường "audioExamples": mảng các mục luyện nghe, MỖI MỤC có đúng 3 trường:
+  - "label": nhãn ngắn gọn (ví dụ: "Từ vựng: Số đếm", "Câu giao tiếp mẫu 1")
+  - "english": CHỈ CHỨA TIẾNG ANH THUẦN TÚY để máy đọc phát âm — TUYỆT ĐỐI KHÔNG lẫn tiếng Việt, KHÔNG phiên âm /.../, KHÔNG ngoặc đơn, KHÔNG số thứ tự, KHÔNG ký tự đặc biệt. Ví dụ đúng: "How old are you?" / "One, two, three, four, five". Ví dụ SAI: "One /wʌn/ (Số một)".
+  - "vietnamese": nghĩa tiếng Việt tương ứng (chỉ để hiển thị, không đọc).
+- Tạo TỐI THIỂU 8-12 mục audioExamples: bao phủ toàn bộ từ vựng + câu mẫu quan trọng trong bài. Mỗi câu/từ vựng chỉ xuất hiện 1 lần, không trùng lặp.
+` : `
+- Trả thêm trường "audioExamples": [] (mảng rỗng vì đây không phải bài ngoại ngữ).
+`}
 Hãy biên soạn đầy đủ các phần sau và trả về DUY NHẤT một chuỗi JSON hợp lệ (không kèm markdown \`\`\`json, không chú thích ngoài JSON):
 {
   "summaryPoints": [
-    "Điểm cốt lõi 1",
+    "Điểm cốt lõi 1 (câu hoàn chỉnh, cụ thể)",
     "Điểm cốt lõi 2",
     "Điểm cốt lõi 3",
     "Điểm cốt lõi 4",
-    "Điểm cốt lõi 5"
+    "Điểm cốt lõi 5",
+    "Điểm cốt lõi 6"
   ],
-  "contentMarkdown": "Bài giảng chi tiết (khoảng 400 - 800 từ) được định dạng Markdown chuẩn đẹp. Bao gồm: 1. Khái niệm & Tại sao cần học, 2. Nguyên lý hoạt động / Công thức / Phương pháp giải, 3. Ví dụ minh họa thực tế sinh động, 4. Các lưu ý & bẫy lỗi thường gặp. ĐẶC BIỆT KHI DẠY TIẾNG ANH HOẶC NGOẠI NGỮ: Danh sách từ vựng/số đếm hãy liệt kê từng dòng rõ ràng (ví dụ: - 1 - One /wʌn/ - Số một), và các câu giao tiếp mẫu hãy để trong dấu trích dẫn > (ví dụ: > \"How old are you?\" - \"I am seven years old.\") để hệ thống tự động gắn nút phát âm cho học sinh bấm nghe.",
+  "contentMarkdown": "Bài giảng chi tiết tối thiểu 800-1200 từ, Markdown chuẩn đẹp, đủ 6 mục: Khái niệm & Tại sao, Kiến thức trọng tâm, Ví dụ minh họa (4-6 ví dụ), Lưu ý & Bẫy lỗi, Bài tập vận dụng mini có đáp án, Mẹo ghi nhớ.",
+  "audioExamples": [
+    { "label": "Từ vựng: Số đếm", "english": "One, two, three", "vietnamese": "Một, hai, ba" },
+    { "label": "Câu giao tiếp mẫu 1", "english": "How old are you?", "vietnamese": "Bạn bao nhiêu tuổi?" }
+  ],
   "codeSnippet": {
     "language": "typescript" | "python" | "html" | "css" | "javascript" | "text",
     "filename": "Tên file (ví dụ: main.ts, calculator.py...)",
@@ -59,14 +89,28 @@ Hãy biên soạn đầy đủ các phần sau và trả về DUY NHẤT một c
       "question": "Câu hỏi trắc nghiệm kiểm tra độ hiểu bài số 2",
       "options": ["Lựa chọn A", "Lựa chọn B", "Lựa chọn C", "Lựa chọn D"],
       "correctIndex": 0,
-      "explanation": "Giải thích chi tiết..."
+      "explanation": "Giải thích chi tiết vì sao đáp án A đúng và các đáp án khác chưa chính xác"
     },
     {
       "id": "q-ai-3",
       "question": "Câu hỏi trắc nghiệm kiểm tra độ hiểu bài số 3",
       "options": ["Lựa chọn A", "Lựa chọn B", "Lựa chọn C", "Lựa chọn D"],
       "correctIndex": 2,
-      "explanation": "Giải thích chi tiết..."
+      "explanation": "Giải thích chi tiết vì sao đáp án C đúng và các đáp án khác chưa chính xác"
+    },
+    {
+      "id": "q-ai-4",
+      "question": "Câu hỏi trắc nghiệm kiểm tra độ hiểu bài số 4",
+      "options": ["Lựa chọn A", "Lựa chọn B", "Lựa chọn C", "Lựa chọn D"],
+      "correctIndex": 3,
+      "explanation": "Giải thích chi tiết vì sao đáp án D đúng và các đáp án khác chưa chính xác"
+    },
+    {
+      "id": "q-ai-5",
+      "question": "Câu hỏi trắc nghiệm kiểm tra độ hiểu bài số 5",
+      "options": ["Lựa chọn A", "Lựa chọn B", "Lựa chọn C", "Lựa chọn D"],
+      "correctIndex": 1,
+      "explanation": "Giải thích chi tiết vì sao đáp án B đúng và các đáp án khác chưa chính xác"
     }
   ]
 }`;

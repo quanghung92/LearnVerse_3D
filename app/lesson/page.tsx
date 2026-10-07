@@ -166,6 +166,7 @@ function LessonContent() {
           codeSnippet: data.lessonData.codeSnippet || targetLesson.codeSnippet,
           quizzes: data.lessonData.quizzes || targetLesson.quizzes,
           resources: data.lessonData.resources || targetLesson.resources,
+          audioExamples: data.lessonData.audioExamples || targetLesson.audioExamples,
         };
 
         setActiveLesson(enriched);

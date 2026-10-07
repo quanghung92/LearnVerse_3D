@@ -16,58 +16,81 @@ interface EnglishSpeechPlayerProps {
   customDialogues?: DialogueLine[];
 }
 
+const VIETNAMESE_REGEX = /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i;
+
+const isPureEnglish = (s: string) => !VIETNAMESE_REGEX.test(s) && /[a-zA-Z]/.test(s);
+
+/**
+ * Bóc tách câu tiếng Anh THUẦN TÚY từ chuỗi lẫn lộn Anh-Việt.
+ * Xử lý các dạng phổ biến do AI sinh ra:
+ *  - `1 - One /wʌn/ - Số một`            -> "One"
+ *  - `- **Hello** /həˈloʊ/ (Xin chào)`    -> "Hello"
+ *  - `> "How old are you?" — "Bạn bao nhiêu tuổi?"` -> "How old are you?"
+ *  - `Hello (Xin chào), hi (chào)`       -> "Hello, hi"
+ * Trả về "" nếu không tách được — KHÔNG BAO GIỜ trả về chuỗi lẫn tiếng Việt.
+ */
 export function extractCleanEnglish(raw: string): string {
   if (!raw) return "";
 
-  // 1. Loại bỏ các phần dịch nghĩa tiếng Việt trong ngoặc: (Tên bạn là gì?), (Tên tôi là...)
-  let text = raw.replace(/\([^)]*\)/g, " ");
-  // Loại bỏ ngoặc vuông placeholder: [Tên của bạn]
-  text = text.replace(/\[[^\]]*\]/g, " ");
-  // Loại bỏ phần phiên âm trong dấu gạch chéo: /wʌn/, /tuː/, /θriː/
-  text = text.replace(/\/([^\/]+)\//g, " ");
-  // Loại bỏ số thứ tự đầu dòng: 1 - One -> One
-  text = text.replace(/^\s*\d+\s*[-–—.]\s*/g, " ");
-  // Bỏ ký tự markdown và icon
-  text = text.replace(/[*_#`~>🔊]/g, " ").trim();
+  const candidates: string[] = [];
+  const pushCandidate = (s: string) => {
+    let c = s
+      .replace(/\[[^\]]*\]/g, " ") // ngoặc vuông placeholder: [Tên của bạn]
+      .replace(/\/[^\/\s]{2,}\//g, " ") // phiên âm /wʌn/, /tuː/
+      .replace(/[*_#`~>🔊"“”]/g, " ") // markdown, icon, ngoặc kép
+      .replace(/^[\d\s\-–—.•]+/, "") // số thứ tự đầu dòng: "1 - "
+      .replace(/^[-–—,;:\s]+|[-–—,;:\s]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (c.length >= 2 && isPureEnglish(c)) {
+      candidates.push(c);
+    }
+  };
 
-  const vietnameseRegex = /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i;
+  // 1. Ưu tiên cao nhất: câu tiếng Anh trong ngoặc kép
+  for (const m of raw.match(/["“]([^"”]+)["”]/g) || []) {
+    pushCandidate(m);
+  }
 
-  // 2. Bỏ các cụm từ nối tiếng Việt thường gặp giữa các câu mẫu
-  text = text.replace(/\b(hoặc|hoặc là|cách ngắn gọn hơn|trả lời|hỏi tên|hỏi tuổi|đếm đồ vật|mẹo|phát âm từ chuyên gia)\b/gi, "|");
+  // 1b. Từ/câu tiếng Anh trong ngoặc đơn: 'Seven', 'How are you?'
+  for (const m of raw.match(/'([^']{2,})'/g) || []) {
+    pushCandidate(m.replace(/'/g, ""));
+  }
 
-  // 3. Tách theo dấu gạch đứng |, dấu hai chấm, dấu chấm hỏi, chấm than, hoặc xuống dòng
-  const sentences = text.split(/[|\n:]+/);
-  const englishParts: string[] = [];
+  // 2. Từ tiếng Anh in đậm **One**
+  for (const m of raw.match(/\*\*([^*]+)\*\*/g) || []) {
+    pushCandidate(m);
+  }
 
-  for (const s of sentences) {
-    const trimmed = s.trim();
-    if (!trimmed) continue;
+  // 3. Bỏ nội dung trong ngoặc đơn (thường là nghĩa tiếng Việt), rồi tách theo dấu gạch ngang:
+  //    "1 - One /wʌn/ - Số một" -> ["1", "One /wʌn/", "Số một"]
+  const noParens = raw.replace(/\([^)]*\)/g, " ");
+  for (const part of noParens.split(/\s+[-–—]\s+/)) {
+    pushCandidate(part);
+  }
 
-    // Nếu không chứa ký tự tiếng Việt có dấu
-    if (!vietnameseRegex.test(trimmed)) {
-      const cleaned = trimmed.replace(/^[-–—,.\s]+|[-–—,.\s]+$/g, "").trim();
-      if (cleaned.length >= 2 && /[a-zA-Z]/.test(cleaned)) {
-        englishParts.push(cleaned);
-      }
-    } else {
-      // Nếu có tiếng Việt, trích xuất các cụm tiếng Anh trong ngoặc kép
-      const matches = trimmed.match(/"([^"]+)"/g) || trimmed.match(/“([^”]+)”/g);
-      if (matches) {
-        for (const m of matches) {
-          const inner = m.replace(/["“”]/g, "").trim();
-          if (!vietnameseRegex.test(inner) && /[a-zA-Z]/.test(inner)) {
-            englishParts.push(inner);
-          }
-        }
-      }
+  // 4. Tách theo dấu | xuống dòng : ;
+  for (const part of noParens.split(/[|\n:;]+/)) {
+    pushCandidate(part.trim());
+  }
+
+  // 5. Cuối cùng: tách theo câu . ! ?
+  if (candidates.length === 0) {
+    for (const s of noParens.split(/[.!?]+/)) {
+      pushCandidate(s.trim());
     }
   }
 
-  let result = englishParts.join(". ").replace(/\s+/g, " ").trim();
-  if (!result || result.length < 2) {
-    result = raw.replace(/\([^)]*\)/g, "").replace(/[*_#`~>]/g, "").trim();
-  }
-  return result;
+  // Loại trùng lặp, giữ thứ tự xuất hiện
+  const seen = new Set<string>();
+  const unique = candidates.filter((c) => {
+    const key = c.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return unique.join(". ").trim();
 }
 
 export function hasEnglishAudioTarget(raw: string): boolean {
@@ -133,7 +156,11 @@ export function speakEnglish(text: string, rate: number = 0.85, onEnd?: () => vo
 
   // 2. Tự động bóc tách câu tiếng Anh chuẩn, loại bỏ các chú thích tiếng Việt
   const clean = extractCleanEnglish(text);
-  if (!clean) return;
+  if (!clean) {
+    toast.warning("Không tách được câu tiếng Anh thuần để đọc từ mục này.");
+    if (onEnd) onEnd();
+    return;
+  }
 
   toast.info(`🔊 Đang đọc: "${clean.length > 50 ? clean.substring(0, 50) + "..." : clean}"`, {
     duration: 3000,
@@ -332,10 +359,10 @@ export default function EnglishSpeechPlayer({ lessonTitle, customDialogues }: En
                     </span>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm font-semibold text-white leading-relaxed">
+                <p className="text-sm sm:text-base font-semibold text-white leading-relaxed">
                   &ldquo;{item.text}&rdquo;
                 </p>
-                <p className="text-[11px] text-slate-400 italic">
+                <p className="text-xs sm:text-sm text-slate-400 italic">
                   ({item.translation})
                 </p>
               </div>
