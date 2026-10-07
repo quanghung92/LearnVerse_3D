@@ -33,7 +33,7 @@ Rule: **Làm xong màn nào thì báo user kiểm tra rồi mới làm tiếp!**
     - **Bước 4/4: AI Phân tích & Khởi tạo lộ trình**: Đánh giá năng lực tổng quan, thời lượng, số mốc milestone 3D và bài học thực chiến.
   - [x] **Bạn đồng hành 3D: Cô bé Anime (model GLB thật — 2026-10-07, user cung cấp file Blender)**:
     - User gửi file Blender "Cute Anime Girl" (.blend + 3 texture PNG); convert sang `anime_girl.glb` (5.4MB) bằng Blender 4.2 headless, thay cho model chibi boy.
-    - Model anime girl tóc hồng cực cute, có rig 93 bones (chưa có animation) — dùng chuyển động thở procedural + xoay theo chuột.
+    - Model anime girl tóc hồng cực cute, có rig 93 bones — **đã tạo animation "Wave" trong Blender**: tay trái buông tự nhiên, tay phải giơ lên vẫy liên tục (cả cẳng tay + bàn tay đung đưa), đầu nghiêng nhẹ theo nhịp. Dùng chuyển động thở procedural + xoay theo chuột.
     - Tự động chuẩn hóa kích thước/đặt chân model đúng vị trí; loading indicator khi tải.
     - **Tương tác click**: nhún nhảy vui vẻ, phát chime synth, hiển thị lời thoại động viên — giữ nguyên.
     - LƯU Ý: file `public/models/anime_girl.glb` (5.4MB) vượt giới hạn push API — user tải từ link riêng và đặt vào `public/models/`.
