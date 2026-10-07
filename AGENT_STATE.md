@@ -31,11 +31,12 @@ Rule: **Làm xong màn nào thì báo user kiểm tra rồi mới làm tiếp!**
     - **Bước 2/4: Kiểm tra trình độ ban đầu**: Bộ câu hỏi trắc nghiệm tương thích theo từng lĩnh vực (Adaptive Testing), chuẩn 100% phong cách Screen 3 (card trắng tinh tế, badge "Câu X/Y", lựa chọn A, B, C, D active tím gradient, nút điều hướng).
     - **Bước 3/4: Mục tiêu & Cam kết thời gian**: Lựa chọn đích đến (Đi làm, làm đồ án/dự án, chuyển ngành, nâng cao chuyên môn) và thời gian học mỗi ngày (15-30p, 45-60p, 1-2h, 2h+).
     - **Bước 4/4: AI Phân tích & Khởi tạo lộ trình**: Đánh giá năng lực tổng quan, thời lượng, số mốc milestone 3D và bài học thực chiến.
-  - [x] **Bạn đồng hành 3D: Cậu bé Chibi vẫy tay (model GLB thật — 2026-10-07)**:
-    - Thay ảnh 2D phẳng (`student-companion-clean.png` dán trên mặt phẳng) bằng **model 3D thật `chibi_boy_waving.glb`**, xoay được mọi góc.
-    - Tự động chuẩn hóa kích thước/đặt chân model đúng vị trí; phát **animation vẫy tay loop** của model + giữ nhịp thở nhấp nhô, nghiêng xoay theo chuột.
-    - Thêm loading indicator khi tải model (~6MB); sửa lỗi React re-render gỡ canvas three.js.
+  - [x] **Bạn đồng hành 3D: Cô bé Anime (model GLB thật — 2026-10-07, user cung cấp file Blender)**:
+    - User gửi file Blender "Cute Anime Girl" (.blend + 3 texture PNG); convert sang `anime_girl.glb` (5.4MB) bằng Blender 4.2 headless, thay cho model chibi boy.
+    - Model anime girl tóc hồng cực cute, có rig 93 bones (chưa có animation) — dùng chuyển động thở procedural + xoay theo chuột.
+    - Tự động chuẩn hóa kích thước/đặt chân model đúng vị trí; loading indicator khi tải.
     - **Tương tác click**: nhún nhảy vui vẻ, phát chime synth, hiển thị lời thoại động viên — giữ nguyên.
+    - LƯU Ý: file `public/models/anime_girl.glb` (5.4MB) vượt giới hạn push API — user tải từ link riêng và đặt vào `public/models/`.
   - [x] Đã build thành công và kiểm tra máy chủ `http://localhost:3000/onboarding` (HTTP 200 OK).
 
 - [x] **Màn 3: Dashboard (Sau khi đăng nhập - `/dashboard`)** - *ĐÃ NÂNG CẤP TOÀN DIỆN THEO SKILL FRONTEND-DESIGN & REACT-BEST-PRACTICES*
