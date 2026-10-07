@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { 
@@ -28,10 +28,11 @@ import {
   Calculator,
   ChevronRight,
   BrainCircuit,
-  Award
+  Award,
+  Square
 } from "lucide-react";
 import { toast } from "sonner";
-import { LessonItem } from "@/lib/data/lessonCatalog";
+import { LessonItem, AudioExample } from "@/lib/data/lessonCatalog";
 import EnglishSpeechPlayer, { speakEnglish, hasEnglishAudioTarget } from "./EnglishSpeechPlayer";
 
 function extractHastText(node: any): string {
@@ -41,6 +42,142 @@ function extractHastText(node: any): string {
     return node.children.map(extractHastText).join(" ");
   }
   return "";
+}
+
+/**
+ * Section "Luyện phát âm chuẩn bản xứ" — render từ `lesson.audioExamples`
+ * do AI sinh ra với trường `english` CHỈ chứa tiếng Anh thuần túy.
+ * Nút loa đọc thẳng chuỗi này, không cần bóc tách -> phát âm chuẩn 100%,
+ * không còn hiện tượng đọc lẫn tiếng Việt.
+ */
+function AudioExamplesSection({ examples }: { examples: AudioExample[] }) {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [isPlayingAll, setIsPlayingAll] = useState(false);
+  const playToken = useRef(0);
+
+  const stopAll = () => {
+    playToken.current++;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingAll(false);
+    setActiveIdx(null);
+  };
+
+  const playOne = (idx: number) => {
+    stopAll();
+    setActiveIdx(idx);
+    // english đã là tiếng Anh thuần -> đọc trực tiếp, chuẩn xác
+    speakEnglish(examples[idx].english, 0.85, () => setActiveIdx(null));
+  };
+
+  const playAll = () => {
+    if (isPlayingAll) {
+      stopAll();
+      return;
+    }
+    const token = ++playToken.current;
+    setIsPlayingAll(true);
+    let i = 0;
+    const next = () => {
+      if (playToken.current !== token) return; // đã bị dừng
+      if (i >= examples.length) {
+        setIsPlayingAll(false);
+        setActiveIdx(null);
+        toast.success("Hoàn thành luyện phát âm! 🌟 (+10 XP)");
+        return;
+      }
+      const idx = i++;
+      setActiveIdx(idx);
+      speakEnglish(examples[idx].english, 0.85, () => setTimeout(next, 700));
+    };
+    next();
+  };
+
+  // Dừng đọc khi unmount
+  useEffect(() => () => stopAll(), []);
+
+  return (
+    <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-tr from-sky-950/50 via-indigo-950/40 to-[#0e1424] border border-sky-500/30 space-y-4 shadow-xl shadow-sky-950/20">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 shrink-0">
+            <Volume2 className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+              Luyện phát âm chuẩn bản xứ
+              <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[10px] font-bold">
+                Audio AI 🎧
+              </span>
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Bấm loa từng mục để nghe đọc tiếng Anh thuần túy — không lẫn tiếng Việt.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={playAll}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border ${
+            isPlayingAll
+              ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-400"
+              : "bg-sky-600 hover:bg-sky-500 text-white border-sky-400/40 shadow-lg shadow-sky-600/30"
+          }`}
+        >
+          {isPlayingAll ? (
+            <>
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>Dừng</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Phát tất cả ({examples.length} mục)</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {examples.map((ex, idx) => {
+          const isActive = activeIdx === idx;
+          return (
+            <div
+              key={idx}
+              className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 ${
+                isActive
+                  ? "bg-sky-500/15 border-sky-500/60 shadow-md shadow-sky-500/10"
+                  : "bg-slate-900/60 hover:bg-slate-900/90 border-slate-800"
+              }`}
+            >
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="text-[11px] font-bold text-sky-300 uppercase tracking-wide">
+                  {ex.label}
+                </div>
+                <p className="text-sm sm:text-base font-bold text-white leading-relaxed">
+                  &ldquo;{ex.english}&rdquo;
+                </p>
+                <p className="text-xs sm:text-sm text-slate-400 italic">({ex.vietnamese})</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => playOne(idx)}
+                className={`p-2 rounded-xl border transition-all cursor-pointer shrink-0 ${
+                  isActive
+                    ? "bg-sky-600 text-white border-sky-400 scale-105"
+                    : "bg-slate-800 hover:bg-slate-700 text-sky-300 border-slate-700 hover:text-white"
+                }`}
+                title="Nghe phát âm mục này 🔊"
+              >
+                <Volume2 className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface VideoPlayerSectionProps {
@@ -278,12 +415,12 @@ export default function VideoPlayerSection({
                 <Sparkles className="w-4 h-4 text-indigo-400" />
                 <span>Mục tiêu & Điểm cốt lõi bài học:</span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+              <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-medium">
                 {lesson.summaryPoints?.[0] || lesson.title}
               </p>
 
               {lesson.summaryPoints && lesson.summaryPoints.length > 1 && (
-                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+                <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-300">
                   {lesson.summaryPoints.slice(1, 5).map((pt, idx) => (
                     <div key={idx} className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
@@ -305,21 +442,21 @@ export default function VideoPlayerSection({
 
             {/* Bài giảng Markdown đầy đủ, chuẩn đẹp */}
             <div className="p-5 sm:p-6 rounded-2xl bg-[#0e1424] border border-slate-800/80 space-y-4">
-              <div className="prose prose-invert prose-indigo max-w-none text-slate-200 text-xs sm:text-sm leading-relaxed">
+              <div className="prose prose-invert prose-indigo max-w-none text-slate-200 text-sm sm:text-base leading-loose">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     h1: ({ node, ...props }) => (
-                      <h1 className="text-xl sm:text-2xl font-black text-white mt-4 mb-2 pb-2 border-b border-slate-800" {...props} />
+                      <h1 className="text-2xl sm:text-3xl font-black text-white mt-5 mb-3 pb-2 border-b border-slate-800" {...props} />
                     ),
                     h2: ({ node, ...props }) => (
-                      <h2 className="text-lg sm:text-xl font-bold text-indigo-300 mt-4 mb-2" {...props} />
+                      <h2 className="text-xl sm:text-2xl font-bold text-indigo-300 mt-5 mb-2.5" {...props} />
                     ),
                     h3: ({ node, ...props }) => (
-                      <h3 className="text-sm sm:text-base font-bold text-slate-100 mt-3 mb-1.5" {...props} />
+                      <h3 className="text-base sm:text-lg font-bold text-slate-100 mt-4 mb-2" {...props} />
                     ),
                     p: ({ node, ...props }) => (
-                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed my-2" {...props} />
+                      <p className="text-sm sm:text-base text-slate-300 leading-loose my-2.5" {...props} />
                     ),
                     ul: ({ node, ...props }) => (
                       <ul className="list-disc list-inside space-y-1 my-2 pl-2 text-slate-300" {...props} />
@@ -339,7 +476,7 @@ export default function VideoPlayerSection({
                       const shouldShowAudio = isEnglishLesson && hasEnglishAudioTarget(rawText);
 
                       return (
-                        <li className="text-slate-300 text-xs sm:text-sm leading-relaxed my-1.5 flex items-start justify-between gap-2.5 group/item" {...props}>
+                        <li className="text-slate-300 text-sm sm:text-base leading-loose my-2 flex items-start justify-between gap-2.5 group/item" {...props}>
                           <span className="flex-1 leading-relaxed">{children}</span>
                           {shouldShowAudio && (
                             <button
@@ -409,6 +546,11 @@ export default function VideoPlayerSection({
               </div>
             </div>
 
+            {/* Section Luyện phát âm từ dữ liệu AI sạch (audioExamples) — đọc tiếng Anh thuần, không lẫn Việt */}
+            {lesson.audioExamples && lesson.audioExamples.length > 0 && (
+              <AudioExamplesSection examples={lesson.audioExamples} />
+            )}
+
             {/* Thực hành nhanh tại chỗ (Quick Interactive Practice) */}
             {lesson.quizzes && lesson.quizzes.length > 0 ? (
               <div className="p-5 rounded-2xl bg-gradient-to-tr from-indigo-950/60 via-slate-900 to-purple-950/40 border border-indigo-500/40 space-y-4">
@@ -422,7 +564,7 @@ export default function VideoPlayerSection({
                   </span>
                 </div>
 
-                <p className="text-xs sm:text-sm font-bold text-white leading-relaxed">
+                <p className="text-sm sm:text-base font-bold text-white leading-relaxed">
                   {lesson.quizzes[0].question}
                 </p>
 
@@ -455,7 +597,7 @@ export default function VideoPlayerSection({
                             toast.error("Chưa chính xác! Xem lời giải bên dưới nhé.");
                           }
                         }}
-                        className={`p-3 rounded-xl border text-xs text-left transition-all cursor-pointer flex items-center gap-2.5 ${btnClass}`}
+                        className={`p-3 rounded-xl border text-sm text-left transition-all cursor-pointer flex items-center gap-2.5 ${btnClass}`}
                       >
                         <span className="w-5 h-5 rounded-lg bg-black/40 flex items-center justify-center font-bold text-[10px] shrink-0">
                           {String.fromCharCode(65 + optIdx)}
@@ -467,7 +609,7 @@ export default function VideoPlayerSection({
                 </div>
 
                 {isQuizAnswered && (
-                  <div className="p-3.5 rounded-xl bg-slate-950/80 border border-indigo-500/30 text-xs text-slate-300 animate-in fade-in space-y-1">
+                  <div className="p-3.5 rounded-xl bg-slate-950/80 border border-indigo-500/30 text-sm text-slate-300 animate-in fade-in space-y-1">
                     <p className="font-bold text-indigo-400">💡 Lời giải chi tiết:</p>
                     <p className="leading-relaxed">{lesson.quizzes[0].explanation}</p>
                   </div>
@@ -479,7 +621,7 @@ export default function VideoPlayerSection({
                   <Lightbulb className="w-4 h-4 text-amber-400" />
                   <span>Thử tài tương tác tại chỗ:</span>
                 </div>
-                <p className="text-xs text-slate-300">
+                <p className="text-sm text-slate-300">
                   {lesson.title.toLowerCase().includes("number") || lesson.title.toLowerCase().includes("tiếng anh") || lesson.title.toLowerCase().includes("unit")
                     ? "Dịch nhanh sang tiếng Việt: Từ 'Seven' trong tiếng Anh là số mấy?"
                     : lesson.title.toLowerCase().includes("toán") || lesson.title.toLowerCase().includes("cộng")
@@ -493,7 +635,7 @@ export default function VideoPlayerSection({
                     value={practiceAnswer}
                     onChange={(e) => setPracticeAnswer(e.target.value)}
                     placeholder="Nhập câu trả lời của bạn..."
-                    className="bg-slate-950 border border-slate-800 focus:border-indigo-500 text-xs sm:text-sm rounded-xl px-4 py-2 text-white placeholder-slate-500 focus:outline-none flex-1"
+                    className="bg-slate-950 border border-slate-800 focus:border-indigo-500 text-sm rounded-xl px-4 py-2 text-white placeholder-slate-500 focus:outline-none flex-1"
                   />
                   <button
                     type="submit"
@@ -677,7 +819,7 @@ export default function VideoPlayerSection({
               onChange={(e) => setNotes(e.target.value)}
               rows={6}
               placeholder="Ghi lại các ý chính, mẹo tính nhanh hoặc công thức cần nhớ..."
-              className="w-full bg-[#0e1424] text-xs sm:text-sm text-slate-200 placeholder-slate-500 rounded-2xl p-4 border border-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed"
+              className="w-full bg-[#0e1424] text-sm text-slate-200 placeholder-slate-500 rounded-2xl p-4 border border-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed"
             />
             <div className="flex justify-between items-center text-xs text-slate-500">
               <span>Ghi chú tự động được lưu an toàn vào tài khoản của bạn.</span>
@@ -701,7 +843,7 @@ export default function VideoPlayerSection({
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Đặt câu hỏi hoặc chia sẻ cách giải của bạn với các bạn khác..."
-                className="flex-1 bg-[#0e1424] text-xs sm:text-sm text-slate-200 placeholder-slate-500 rounded-xl px-4 py-2.5 border border-slate-800 focus:outline-none focus:border-indigo-500"
+                className="flex-1 bg-[#0e1424] text-sm text-slate-200 placeholder-slate-500 rounded-xl px-4 py-2.5 border border-slate-800 focus:outline-none focus:border-indigo-500"
               />
               <button
                 type="submit"
@@ -722,7 +864,7 @@ export default function VideoPlayerSection({
                     </span>
                     <span className="text-[11px] text-slate-500">{cm.time}</span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed pl-5">{cm.text}</p>
+                  <p className="text-sm text-slate-300 leading-relaxed pl-5">{cm.text}</p>
                 </div>
               ))}
             </div>

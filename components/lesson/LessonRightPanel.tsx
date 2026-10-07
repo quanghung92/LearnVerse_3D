@@ -96,7 +96,7 @@ export default function LessonRightPanel({ lesson, courseTitle }: LessonRightPan
 
         <div className="bg-[#0e1424] rounded-2xl border border-slate-800 p-4 space-y-2.5">
           {lesson.summaryPoints.map((point, index) => (
-            <div key={index} className="flex items-start gap-2.5 text-xs text-slate-300 leading-snug">
+            <div key={index} className="flex items-start gap-2.5 text-sm text-slate-300 leading-relaxed">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
               <span>{point}</span>
             </div>
@@ -129,7 +129,7 @@ export default function LessonRightPanel({ lesson, courseTitle }: LessonRightPan
                     )}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-200 group-hover:text-white truncate block">
+                    <span className="text-sm font-bold text-slate-200 group-hover:text-white truncate block">
                       {res.name}
                     </span>
                     {res.size && (
@@ -164,7 +164,7 @@ export default function LessonRightPanel({ lesson, courseTitle }: LessonRightPan
         {/* Khung chat mini */}
         <div className="bg-[#0e1424] rounded-2xl border border-indigo-500/30 p-3 space-y-3 flex flex-col h-72">
           {/* Tin nhắn */}
-          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-xs">
+          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar text-sm">
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -216,7 +216,7 @@ export default function LessonRightPanel({ lesson, courseTitle }: LessonRightPan
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Hỏi AI về bài học này..."
-              className="flex-1 bg-slate-900 text-xs text-white placeholder-slate-500 rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-slate-900 text-sm text-white placeholder-slate-500 rounded-xl px-3 py-2 border border-slate-800 focus:outline-none focus:border-indigo-500"
             />
             <button
               type="submit"

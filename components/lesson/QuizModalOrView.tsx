@@ -265,7 +265,7 @@ export default function QuizModalOrView({
                       {optLetter}
                     </div>
 
-                    <span className="text-xs sm:text-sm font-medium leading-relaxed flex-1">
+                    <span className="text-sm sm:text-base font-medium leading-relaxed flex-1">
                       {optText}
                     </span>
                   </button>
@@ -443,21 +443,21 @@ export default function QuizModalOrView({
                       <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <h4 className="text-sm font-bold text-white">
+                      <h4 className="text-base font-bold text-white">
                         Câu {qIdx + 1}: {q.question}
                       </h4>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-sm text-slate-400 mt-1">
                         Lựa chọn của bạn: <span className="font-semibold text-slate-200">{q.options[userOpt] ?? "Chưa trả lời"}</span>
                       </p>
                       {!isCorrect && (
-                        <p className="text-xs text-emerald-400 mt-0.5">
+                        <p className="text-sm text-emerald-400 mt-0.5">
                           Đáp án đúng: <span className="font-bold">{q.options[q.correctIndex]}</span>
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-sm text-slate-300 leading-relaxed">
                     <span className="font-bold text-indigo-400">Giải thích: </span>
                     {q.explanation}
                   </div>
