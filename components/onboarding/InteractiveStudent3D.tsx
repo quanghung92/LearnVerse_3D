@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Sparkles, MessageSquare } from "lucide-react";
 
 interface InteractiveStudent3DProps {
@@ -58,6 +59,7 @@ export default function InteractiveStudent3D({
 }: InteractiveStudent3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [speech, setSpeech] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const speechTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moodRef = useRef(mood);
   const jumpAnimRef = useRef({ active: false, timer: 0 });
@@ -139,40 +141,58 @@ export default function InteractiveStudent3D({
       })
     );
     shadowMesh.rotation.x = -Math.PI / 2;
-    shadowMesh.position.set(0, -1.82, 0);
+    shadowMesh.position.set(0, -1.56, 0);
     scene.add(shadowMesh);
 
-    // 4. Load 100% Transparent Cutout Character (No gray box, no square card borders!)
-    let characterMesh: THREE.Mesh | null = null;
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("/images/student-companion-clean.png", (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.minFilter = THREE.LinearFilter;
-      tex.magFilter = THREE.LinearFilter;
+    // 4. Load TRUE 3D Chibi Character (GLB) — model 3D thật, xoay được mọi góc
+    let mixer: THREE.AnimationMixer | null = null;
+    const gltfLoader = new GLTFLoader();
 
-      const geom = new THREE.PlaneGeometry(2.9, 2.9, 32, 32);
+    gltfLoader.load(
+      "/models/chibi_boy_waving.glb",
+      (gltf) => {
+        const modelRoot = gltf.scene;
 
-      // Give subtle 3D cylindrical curve so it pops in perspective without looking flat
-      const pos = geom.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        pos.setZ(i, -x * x * 0.06);
+        // Tự động chuẩn hóa: cao ~2.3 đơn vị, chân đặt tại y = -1.55 (ngay trên bóng đổ)
+        const bbox = new THREE.Box3().setFromObject(modelRoot);
+        const size = bbox.getSize(new THREE.Vector3());
+        const scale = 2.3 / Math.max(size.y, 0.001);
+        modelRoot.scale.setScalar(scale);
+        modelRoot.position.set(
+          -bbox.getCenter(new THREE.Vector3()).x * scale,
+          -1.55 - bbox.min.y * scale,
+          -bbox.getCenter(new THREE.Vector3()).z * scale
+        );
+
+        // Tinh chỉnh vật liệu cho sáng đẹp dưới ánh đèn
+        modelRoot.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((m) => {
+              if (m instanceof THREE.MeshStandardMaterial) {
+                m.roughness = Math.min(m.roughness, 0.65);
+              }
+            });
+          }
+        });
+
+        studentGroup.add(modelRoot);
+
+        // Phát animation vẫy tay của model (loop liên tục — mascot thân thiện)
+        if (gltf.animations && gltf.animations.length > 0) {
+          mixer = new THREE.AnimationMixer(modelRoot);
+          mixer.clipAction(gltf.animations[0]).play();
+        }
+
+        setIsLoading(false);
+      },
+      undefined,
+      () => {
+        console.error("Không tải được model /models/chibi_boy_waving.glb");
+        setIsLoading(false);
       }
-      geom.computeVertexNormals();
-
-      const mat = new THREE.MeshStandardMaterial({
-        map: tex,
-        transparent: true,
-        alphaTest: 0.05,
-        roughness: 0.3,
-        metalness: 0.05,
-        side: THREE.DoubleSide,
-      });
-
-      characterMesh = new THREE.Mesh(geom, mat);
-      characterMesh.position.set(0, 0.12, 0);
-      studentGroup.add(characterMesh);
-    });
+    );
 
     // 5. Floating Magic XP Sparks & Particles
     const particleCount = 35;
@@ -240,7 +260,9 @@ export default function InteractiveStudent3D({
 
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
-      const activeMood = moodRef.current;
+
+      // Cập nhật animation vẫy tay của model GLB
+      if (mixer) mixer.update(delta);
 
       // Smooth mouse cursor 3D parallax tracking
       const smoothing = 1 - Math.exp(-9 * delta);
@@ -263,13 +285,6 @@ export default function InteractiveStudent3D({
         if (jump.timer >= 0.5) {
           jump.active = false;
         }
-      }
-
-      // Waving hand micro-sway
-      if (characterMesh) {
-        const waveSpeed = activeMood === "happy" ? 5 : 2.5;
-        const waveAngle = Math.sin(elapsed * waveSpeed) * 0.03;
-        characterMesh.rotation.z = waveAngle;
       }
 
       // Shadow breathing scale
@@ -298,6 +313,14 @@ export default function InteractiveStudent3D({
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onPointerMove);
       resizeObserver.disconnect();
+      if (mixer) mixer.stopAllAction();
+      scene.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach((m) => m.dispose());
+        }
+      });
       renderer.dispose();
       scene.clear();
       renderer.domElement.remove();
@@ -341,22 +364,32 @@ export default function InteractiveStudent3D({
         </div>
       )}
 
-      {/* 3D Interactive Canvas */}
-      <div
-        ref={mountRef}
-        onClick={handleClick}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleClick();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-label="Tương tác với bạn đồng hành LearnVerse"
-        className="h-[320px] w-[260px] max-w-full cursor-pointer rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-[350px] sm:w-[290px] transition-transform active:scale-95"
-        title="Nhấp vào bạn đồng hành để trò chuyện và chào hỏi!"
-      />
+      {/* 3D Interactive Canvas — khung ngoài do React quản lý, khung trong chỉ chứa canvas do three.js tự chèn (không có React children để tránh bị React gỡ khi re-render) */}
+      <div className="relative h-[320px] w-[260px] max-w-full rounded-2xl sm:h-[350px] sm:w-[290px]">
+        <div
+          ref={mountRef}
+          onClick={handleClick}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleClick();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Tương tác với bạn đồng hành LearnVerse"
+          className="absolute inset-0 cursor-pointer rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 transition-transform active:scale-95"
+          title="Nhấp vào bạn đồng hành để trò chuyện và chào hỏi!"
+        />
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-2 text-indigo-400">
+              <div className="w-8 h-8 rounded-full border-2 border-indigo-300/30 border-t-indigo-400 animate-spin" />
+              <span className="text-[11px] font-semibold">Đang gọi bạn 3D ra… ✨</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Interactive Action Prompt */}
       <button
