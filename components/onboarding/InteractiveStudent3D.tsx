@@ -144,12 +144,12 @@ export default function InteractiveStudent3D({
     shadowMesh.position.set(0, -1.56, 0);
     scene.add(shadowMesh);
 
-    // 4. Load TRUE 3D Chibi Character (GLB) — model 3D thật, xoay được mọi góc
+    // 4. Load TRUE 3D Anime Girl (GLB) — model 3D thật, xoay được mọi góc
     let mixer: THREE.AnimationMixer | null = null;
     const gltfLoader = new GLTFLoader();
 
     gltfLoader.load(
-      "/models/chibi_boy_waving.glb",
+      "/models/anime_girl.glb",
       (gltf) => {
         const modelRoot = gltf.scene;
 
@@ -179,7 +179,7 @@ export default function InteractiveStudent3D({
 
         studentGroup.add(modelRoot);
 
-        // Phát animation vẫy tay của model (loop liên tục — mascot thân thiện)
+        // Phát animation của model nếu có (model hiện tại chưa có animation — dùng chuyển động thở procedural ở vòng lặp)
         if (gltf.animations && gltf.animations.length > 0) {
           mixer = new THREE.AnimationMixer(modelRoot);
           mixer.clipAction(gltf.animations[0]).play();
@@ -189,7 +189,7 @@ export default function InteractiveStudent3D({
       },
       undefined,
       () => {
-        console.error("Không tải được model /models/chibi_boy_waving.glb");
+        console.error("Không tải được model /models/anime_girl.glb");
         setIsLoading(false);
       }
     );
